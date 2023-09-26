@@ -2,22 +2,26 @@
 
 #include <stdio.h>
 
-enum my_keycodes {
-  OD_EN = 200,
-  OD_BRDN = 201,
-  OD_BRUP = 202,
-  KEY_M = 203,
-};
-
 typedef union {
   uint32_t raw;
   struct {
+    bool     oled_first_boot :1;
     bool     oled_enable :1;
     uint8_t     oled_brightness :8;
+    uint8_t     oled_timeout :8;
   };
 } user_config_t;
 
 user_config_t user_config;
+
+enum my_keycodes {
+  OD_EN = 200,
+  OD_BRDN = 201,
+  OD_BRUP = 202,
+  OD_TODN = 203,
+  OD_TOUP = 204,
+  KY_HELP = 205,
+};
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [0] = LAYOUT_all(
@@ -31,9 +35,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [1] = LAYOUT_all(
         QK_BOOT, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, KC_MUTE, KC_VOLD, KC_VOLU, _______, _______, _______,
         _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,
-        _______, RGB_TOG, _______, RGB_MOD, RGB_HUI, RGB_HUD, RGB_SAI, RGB_SAD, RGB_VAI, RGB_VAD, _______, _______, _______, _______,          _______, _______, _______, _______,
-        BL_TOGG, OD_EN,   OD_BRUP, OD_BRDN, _______, _______, _______, _______, _______, _______, _______, _______, _______,                   _______, _______, _______, _______,
-        _______, _______, _______, _______, BL_DOWN, BL_TOGG, BL_UP,   _______, _______, _______, _______, KEY_M,   _______,          _______, _______, _______, _______, _______,
+        _______, RGB_TOG, _______, RGB_MOD, RGB_HUD, RGB_HUI, RGB_SAD, RGB_SAI, RGB_VAD, RGB_VAI, _______, _______, _______, _______,          _______, _______, _______, _______,
+        BL_TOGG, OD_EN,   OD_BRDN, OD_BRUP, OD_TODN, OD_TOUP, _______, _______, _______, _______, _______, _______, _______,                   _______, _______, _______, _______,
+        _______, _______, _______, _______, BL_DOWN, BL_TOGG, BL_UP,   _______, _______, _______, _______, KY_HELP, _______,          _______, _______, _______, _______, _______,
         _______, _______, _______,                            _______,                            _______, _______, _______, _______, _______, _______, _______, _______, _______
     ),
     [2] = LAYOUT_all(
@@ -86,7 +90,11 @@ uint8_t  current_idle_frame = 0;
 // uint8_t current_prep_frame = 0; // uncomment if PREP_FRAMES >1
 uint8_t current_tap_frame = 0;
 
-uint8_t brightness_oled_timeout = 0;
+
+#define OLED_SETTINGS_TIMEOUT_FRAMES 10 // через сколько кадров пропадет инфа
+uint8_t oled_settings_timeout = 0;
+
+uint8_t oled_display_timeout = 60;
 // Code containing pixel art, contains:
 // 5 idle frames, 1 prep frame, and 2 tap frames
 
@@ -133,9 +141,9 @@ static void render_anim(void) {
 
     // assumes 1 frame prep stage
     void animation_phase(void) {
-        // brightness_oled_timeout -= 1;
-        // if (brightness_oled_timeout == 255) brightness_oled_timeout = 0;
-        if (brightness_oled_timeout != 0) brightness_oled_timeout -= 1;
+        // oled_settings_timeout -= 1;
+        // if (oled_settings_timeout == 255) oled_settings_timeout = 0;
+        if (oled_settings_timeout != 0) oled_settings_timeout -= 1; //
         if (get_current_wpm() <= IDLE_SPEED) {
             current_idle_frame = (current_idle_frame + 1) % IDLE_FRAMES;
             oled_write_raw_P(idle[abs((IDLE_FRAMES - 1) - current_idle_frame)], ANIM_SIZE);
@@ -157,7 +165,10 @@ static void render_anim(void) {
         }
         anim_sleep = timer_read32();
     } else {
-        if (timer_elapsed32(anim_sleep) > OLED_TIMEOUT) {
+      uint32_t tmp_timeout;
+      tmp_timeout = oled_display_timeout;
+      tmp_timeout = tmp_timeout * 1000;
+        if (timer_elapsed32(anim_sleep) > tmp_timeout) {
             oled_off();
         } else {
             if (timer_elapsed32(anim_timer) > ANIM_FRAME_DURATION) {
@@ -168,23 +179,24 @@ static void render_anim(void) {
     }
 }
 
-
-
-// oled_rotation_t oled_init_user(oled_rotation_t rotation) {
-//   if (!is_keyboard_master()) {
-//     return OLED_ROTATION_180;  // flips the display 180 degrees if offhand
-//   }
-//   return rotation;
-// }
-
-bool enable = true;
 bool start = true;
+bool enable = true;
 bool keys = false;
+bool brightness_or_timeout = false; //brigthess = false, timeout = true
+
 
 bool oled_task_user(void) {
+        user_config.raw = eeconfig_read_user();
+        if (!user_config.oled_first_boot) // 0 - default eeprom value
+        {
+            user_config.oled_first_boot = 1;
+            user_config.oled_enable = 1;
+            user_config.oled_brightness = 255;
+            user_config.oled_timeout = 60;
+            eeconfig_update_user(user_config.raw);
+        }
         if (start)
         {
-            user_config.raw = eeconfig_read_user();
             if (!user_config.oled_enable)
             {
                 oled_clear();
@@ -192,6 +204,7 @@ bool oled_task_user(void) {
                 enable = false;
             }
             oled_set_brightness(user_config.oled_brightness);
+            oled_display_timeout = user_config.oled_timeout;
             start = false;
         }
 
@@ -214,17 +227,25 @@ bool oled_task_user(void) {
                 led_t led_state = host_keyboard_led_state();  // caps lock stuff, prints CAPS on new line if caps led is on
 
 
-                oled_set_cursor(0, 1);                            // sets cursor to (row, column) using charactar spacing (5 rows on 128x32 screen, anything more will overflow back to the top)
-                if (brightness_oled_timeout > 0)
+                oled_set_cursor(0, 1); // sets cursor to (row, column) using charactar spacing (5 rows on 128x32 screen, anything more will overflow back to the top)
+                if (oled_settings_timeout > 0)
                 {
-                    oled_write_P(PSTR("BR: "), false);
-                    oled_write(get_u8_str(oled_get_brightness(), ' '), false);
+                    if (!brightness_or_timeout)
+                    {
+                        oled_write_P(PSTR("BR: "), false);
+                        oled_write(get_u8_str(oled_get_brightness(), ' '), false);
+                    }
+                    else
+                    {
+                        oled_write_P(PSTR("TO:"), false);
+                        oled_write(get_u8_str(oled_display_timeout, ' '), false);
+                        oled_write_P(PSTR("s "), false);
+                    }
                 }
                 else
                 { 
                     oled_write_P(led_state.caps_lock ? PSTR("CAPS") : PSTR("    "), false);
                 }
-                // bongo cat
 
             }
             else
@@ -233,13 +254,13 @@ bool oled_task_user(void) {
                 oled_set_cursor(0, 0);
                 oled_write_P(PSTR("Q  E   RT  YU  IO DHE"), false);
                 oled_set_cursor(0, 1);
-                oled_write_P(PSTR("Ut Um H+- S+- B+- M-+"), false);
+                oled_write_P(PSTR("Ut Um H-+ S-+ B-+ M-+"), false);
                 oled_set_cursor(0, 2);
-                oled_write_P(PSTR("A   SD               "), false);
+                // oled_write_P(PSTR("A   SD               "), false);
+                oled_write_P(PSTR("A   SD  FG       Esc "), false);
                 oled_set_cursor(0, 3);
-                oled_write_P(PSTR("Ot B+-               "), false);
-
-
+                // oled_write_P(PSTR("Ot B+-               "), false);
+                oled_write_P(PSTR("Ot B-+ T-+       BOOT"), false);
             }
 
         }
@@ -249,10 +270,23 @@ bool oled_task_user(void) {
 
 void brightness_set(int8_t br)
 {
-        brightness_oled_timeout = 10;
+        oled_settings_timeout = OLED_SETTINGS_TIMEOUT_FRAMES;
         // timer_clear();
+        anim_sleep = timer_read32();
         oled_on();
         oled_set_brightness(oled_get_brightness() + br);
+        brightness_or_timeout = false; //brigthess = false, timeout = true
+}
+
+void timeout_set(int8_t to)
+{
+        anim_sleep = timer_read32();
+        oled_settings_timeout = OLED_SETTINGS_TIMEOUT_FRAMES;
+        brightness_or_timeout = true; //brigthess = false, timeout = true
+        oled_display_timeout += to;
+        if (oled_display_timeout > 120) oled_display_timeout = 10;
+        else if (oled_display_timeout < 10) oled_display_timeout = 120;
+
 }
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
@@ -264,23 +298,23 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         {
             oled_clear();
             oled_off();
-            user_config.oled_enable = 0; // Toggles the status
-            eeconfig_update_user(user_config.raw); // Writes the new status to EEPROM
+            user_config.oled_enable = 0;
+            // eeconfig_update_user(user_config.raw);
         }
         else
         {
             oled_on();
-            user_config.oled_enable = 1; // Toggles the status
-            eeconfig_update_user(user_config.raw); // Writes the new status to EEPROM
+            user_config.oled_enable = 1;
         }     
+            eeconfig_update_user(user_config.raw);
       } 
       return false; // Skip all further processing of this key
     case OD_BRUP:
       if (record->event.pressed) {
         brightness_set(10);
         if (oled_get_brightness() <= 15) oled_set_brightness(15);
-        user_config.oled_brightness = oled_get_brightness(); // Toggles the status
-        eeconfig_update_user(user_config.raw); // Writes the new status to EEPROM
+        user_config.oled_brightness = oled_get_brightness();
+        eeconfig_update_user(user_config.raw);
 
       } 
       return false; // Skip all further processing of this key
@@ -288,13 +322,27 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
       if (record->event.pressed) {
         brightness_set(-10);
         if (oled_get_brightness() <= 15) oled_set_brightness(255);
-        user_config.oled_brightness = oled_get_brightness(); // Toggles the status
-        eeconfig_update_user(user_config.raw); // Writes the new status to EEPROM
+        user_config.oled_brightness = oled_get_brightness();
+        eeconfig_update_user(user_config.raw);
       } 
       return false; // Skip all further processing of this key
-    case KEY_M:
+    case KY_HELP:
       if (record->event.pressed) {
         keys = !keys;
+      } 
+      return false; // Skip all further processing of this key
+    case OD_TOUP:
+      if (record->event.pressed) {
+        timeout_set(10);
+        user_config.oled_timeout = oled_display_timeout;
+        eeconfig_update_user(user_config.raw);
+      } 
+      return false; // Skip all further processing of this key
+    case OD_TODN:
+      if (record->event.pressed) {
+        timeout_set(-10);
+        user_config.oled_timeout = oled_display_timeout;
+        eeconfig_update_user(user_config.raw);
       } 
       return false; // Skip all further processing of this key
     default:
@@ -302,10 +350,4 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
   }
 }
 
-// bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-//   if (record->event.pressed) {
-//     set_keylog(keycode, record);
-//   }
-//   return true;
-// }
 #endif // OLED_DRIVER_ENABLE
