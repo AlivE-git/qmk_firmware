@@ -199,8 +199,8 @@ static void render_anim(void) {
   }
 }
 
-bool start = true;
-bool bongo_flag = true;
+// bool start_flag = true;
+bool bongo_flag = false;
 bool keys_flag = false;
 bool menu_flag = false;
 bool menu_push = false;
@@ -218,7 +218,7 @@ int8_t col = 0;
 void enterBootloader(void)
 {
   oled_on();
-  // oled_clear();
+  oled_clear();
   oled_set_cursor(0, 0);
   oled_write_P(PSTR("BOOT"), false);
   oled_render();
@@ -448,6 +448,7 @@ void print_menu(void)
         {
           if (select_value > 0) {bongo_flag = 1; user_config.oled_enable = 1;}
           else if (select_value < 0) {bongo_flag = 0; user_config.oled_enable = 0;};
+          eeconfig_update_user(user_config.raw);
           oled_clear();
           oled_set_cursor(0, 0);
           oled_write(oledSettingsText[OLED_SETTINGS_ENABLE], true);
@@ -585,8 +586,16 @@ void print_menu(void)
   menu_push = false;
 }
 
-bool oled_task_user(void) {
+void keyboard_post_init_user(void) 
+{
   user_config.raw = eeconfig_read_user();
+  bongo_flag = user_config.oled_enable;
+  oled_set_brightness(user_config.oled_brightness);
+  oled_display_timeout = user_config.oled_timeout;
+}
+
+bool oled_task_user(void) {
+  
   if (!user_config.oled_first_boot) // 0 - default eeprom value
   {
       user_config.oled_first_boot = 1;
@@ -595,18 +604,7 @@ bool oled_task_user(void) {
       user_config.oled_timeout = 60;
       eeconfig_update_user(user_config.raw);
   }
-  if (start)
-  {
-    if (!user_config.oled_enable)
-    {
-        // oled_clear();
-        // oled_off();
-        bongo_flag = false;
-    }
-    oled_set_brightness(user_config.oled_brightness);
-    oled_display_timeout = user_config.oled_timeout;
-    start = false;
-  }
+
 // oled_on();
   if (keys_flag)
   {
