@@ -1,7 +1,3 @@
-// #include QMK_KEYBOARD_H
-#include <stdio.h>
-// #include "menu.c"
-
 typedef enum
 {
   MENU_UNDERGLOW,
