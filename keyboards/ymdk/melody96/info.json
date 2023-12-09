@@ -14,7 +14,7 @@
     },
     "diode_direction": "ROW2COL",
     "backlight": {
-        "pin": "B6",
+        // "pin": "B6",
         "levels": 5
     },
     "rgblight": {
@@ -40,7 +40,7 @@
     "indicators": {
         // "caps_lock": "C7",
         // "num_lock": "C6",
-        "scroll_lock": "B5",
+        // "scroll_lock": "B5", 
         "on_state": 0
     },
     "bootmagic": {

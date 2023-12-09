@@ -6,7 +6,7 @@ OLED_TRANSPORT = i2c
 OLED_DRIVER = ssd1306
 WPM_ENABLE = yes
 
-BOOTMAGIC_ENABLE = yes      # Enable Bootmagic Lite
+BOOTMAGIC_ENABLE = no      # Enable Bootmagic Lite
 MOUSEKEY_ENABLE = no       # Mouse keys
 EXTRAKEY_ENABLE = yes       # Audio control and System control
 CONSOLE_ENABLE = no         # Console for debug
@@ -15,3 +15,8 @@ NKRO_ENABLE = yes           # Enable N-Key Rollover
 BACKLIGHT_ENABLE = no      # Enable keyboard backlight functionality
 RGBLIGHT_ENABLE = yes       # Enable keyboard RGB underglow
 AUDIO_ENABLE = no           # Audio output
+ENCODER_ENABLE = yes
+ENCODER_MAP_ENABLE = yes
+
+BOOTLOADER = custom           # This Keymap Uses nanoBoot, more info in readme
+BOOTLOADER_SIZE = 1024
