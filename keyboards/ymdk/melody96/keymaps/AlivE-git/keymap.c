@@ -667,7 +667,6 @@ bool oled_task_user(void) {
     else
     { 
       oled_write_P(led_state.caps_lock ? PSTR("CAPS") : PSTR("    "), false);
-      
       if (led_state.caps_lock) {anim_sleep = timer_read32(); oled_on();}
     }
   }
@@ -676,7 +675,6 @@ bool oled_task_user(void) {
     oled_clear();
     oled_off();
   }
-
   return false;
 }
 
@@ -684,16 +682,14 @@ void brightness_set(bool increase, bool flag)
 {
   anim_sleep = timer_read32();
   oled_settings_timeout = OLED_SETTINGS_TIMEOUT_FRAMES;
-  // timer_clear();
   oled_on();
   oled_set_brightness(oled_get_brightness() + (increase ? +8 : -8));
-  // brightness_or_timeout = false; //brigthess = false, timeout = true
   user_config.oled_brightness = oled_get_brightness();
   eeconfig_update_user(user_config.raw);
   if (flag)
   {
-    timeout_flag = false; //brigthess = false, timeout = true
-    brightness_flag = true; //brigthess = false, timeout = true
+    timeout_flag = false;
+    brightness_flag = true;
   }
 }
 
@@ -701,7 +697,6 @@ void timeout_set(bool increase, bool flag)
 {
   anim_sleep = timer_read32();
   oled_settings_timeout = OLED_SETTINGS_TIMEOUT_FRAMES;
-  // brightness_or_timeout = true; //brigthess = false, timeout = true
   oled_display_timeout += (increase ? +10 : -10);
   if (oled_display_timeout > 120) oled_display_timeout = 10;
   else if (oled_display_timeout < 10) oled_display_timeout = 120;
@@ -709,8 +704,8 @@ void timeout_set(bool increase, bool flag)
   eeconfig_update_user(user_config.raw);
   if (flag)
   {
-    brightness_flag = false; //brigthess = false, timeout = true
-    timeout_flag = true; //brigthess = false, timeout = true
+    brightness_flag = false;
+    timeout_flag = true;
   }
 }
 
@@ -746,24 +741,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
       return false; // Skip all further processing of this key
     case OD_BRUP:
       if (record->event.pressed) {
-        if (!menu_flag)
-        {
-          brightness_set(true, true);
-          // if (oled_get_brightness() <= 15) oled_set_brightness(15);
-          // user_config.oled_brightness = oled_get_brightness();
-          // eeconfig_update_user(user_config.raw);
-        }
+        if (!menu_flag) brightness_set(true, true);
       } 
       return false; // Skip all further processing of this key
     case OD_BRDN:
       if (record->event.pressed) {
-        if (!menu_flag)
-        {
-          brightness_set(false, true);
-          // if (oled_get_brightness() <= 15) oled_set_brightness(255);
-          // user_config.oled_brightness = oled_get_brightness();
-          // eeconfig_update_user(user_config.raw);
-        }
+        if (!menu_flag) brightness_set(false, true);
       } 
       return false; // Skip all further processing of this key
     case KY_HELP:
@@ -789,22 +772,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
       return false; // Skip all further processing of this key
     case OD_TOUP:
       if (record->event.pressed) {
-        if (!menu_flag)
-        {
-          timeout_set(true, true);
-          // user_config.oled_timeout = oled_display_timeout;
-          // eeconfig_update_user(user_config.raw);
-        }
+        if (!menu_flag) timeout_set(true, true);
       } 
       return false; // Skip all further processing of this key
     case OD_TODN:
       if (record->event.pressed) {
-        if (!menu_flag)
-        {
-          timeout_set(false, true);
-          // user_config.oled_timeout = oled_display_timeout;
-          // eeconfig_update_user(user_config.raw);
-        }
+        if (!menu_flag) timeout_set(false, true); 
       } 
       return false; // Skip all further processing of this key
     case BL_BOOT:
