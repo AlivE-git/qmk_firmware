@@ -217,14 +217,12 @@ int8_t col = 0;
 
 void enterBootloader(void)
 {
-  // bongo_flag = false;
-  // menu_flag = false;
-  // keys_flag = false;
   oled_on();
   // oled_clear();
   oled_set_cursor(0, 0);
   oled_write_P(PSTR("BOOT"), false);
   oled_render();
+  
   cli();
   wdt_enable(WDTO_15MS);
   wdt_reset();
@@ -260,6 +258,7 @@ void row_col(uint8_t col_l, uint8_t row_l)
 void print_menu(void)
 {
   oled_clear();
+  oled_on();
   switch (col)
   {
     case 0:
@@ -301,7 +300,7 @@ void print_menu(void)
         {
           row_col(0, 0);
           menu_flag = false;
-          keys_flag = false; //не обязательно
+          // keys_flag = false; //не обязательно
           // bongo_flag = true;
         }
         break;
@@ -497,7 +496,7 @@ void print_menu(void)
           };
           break;
         case OLED_SETTINGS_TIMEOUT:
-                    if (select_flag)
+          if (select_flag)
           {
             if (select_value > 0) timeout_set(true, false);
             else if (select_value < 0) timeout_set(false, false);
@@ -566,10 +565,10 @@ void print_menu(void)
         break;
       case KEYBOARD_SETTINGS_BACK:
         if (menu_push)
-          {
-            row_col(0, MENU_KEYBOARD);
-          } 
-          break;
+        {
+          row_col(0, MENU_KEYBOARD);
+        } 
+        break;
       default:
         break;
       }
@@ -600,19 +599,19 @@ bool oled_task_user(void) {
   {
     if (!user_config.oled_enable)
     {
-        oled_clear();
-        oled_off();
+        // oled_clear();
+        // oled_off();
         bongo_flag = false;
     }
     oled_set_brightness(user_config.oled_brightness);
     oled_display_timeout = user_config.oled_timeout;
     start = false;
   }
-
+// oled_on();
   if (keys_flag)
   {
-      anim_sleep = timer_read32();
-      oled_on();
+      // anim_sleep = timer_read32();
+      // oled_on();
       if (update_menu_flag) 
       {
         col = MENU_KEYS + 1; 
@@ -624,8 +623,8 @@ bool oled_task_user(void) {
   }
   else if (menu_flag)
   {
-    anim_sleep = timer_read32();
-    oled_on();
+    // anim_sleep = timer_read32();
+    // oled_on();
     if (update_menu_flag)
     {
       print_menu(); 

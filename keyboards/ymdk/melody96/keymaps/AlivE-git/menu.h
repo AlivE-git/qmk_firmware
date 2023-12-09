@@ -12,7 +12,7 @@ typedef enum
   MENU_LENGHT,
 } MENU;
 
-char* menuText[] = {
+const char* menuText[] = {
   [MENU_UNDERGLOW] = " UNDERGLOW SETTINGS  ",
   [MENU_OLED]      = " OLED SETTINGS       ",
   [MENU_KEYS]      = " FN KEYS INFO        ",
